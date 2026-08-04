@@ -1,0 +1,103 @@
+{
+  "theme": "dark",
+  "typography": {
+    "primary_heading_font": "Playfair Display, serif",
+    "secondary_heading_font": "Outfit, sans-serif",
+    "body_font": "Manrope, sans-serif",
+    "scale": {
+      "h1": "text-5xl md:text-7xl lg:text-8xl tracking-tighter leading-none",
+      "h2": "text-4xl md:text-5xl lg:text-6xl tracking-tight leading-tight",
+      "h3": "text-2xl md:text-3xl lg:text-4xl tracking-tight",
+      "body": "text-base md:text-lg leading-relaxed text-white/80",
+      "overline": "text-xs md:text-sm uppercase tracking-[0.2em] text-[#FF5E00] font-semibold"
+    },
+    "rules": "Avoid Space Grotesk. Use Playfair Display exclusively for the main Hero kinetic text to give an editorial, premium Awwwards feel. Use Outfit for utility headings (Offers, Pricing, FAQ). Use Manrope for high readability in body paragraphs."
+  },
+  "colors": {
+    "palette": {
+      "background": "#0A0A0A",
+      "surface": "#141414",
+      "surface_elevated": "#1F1F1F",
+      "primary": "#FF5E00",
+      "primary_hover": "#E65400",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#A1A1AA",
+      "border": "#27272A"
+    },
+    "rules": "Dark theme mandated by aesthetic constraints. Orange (#FF5E00) is the sole accent color for CTAs, active states, and highlights. NO PURPLE, NO TEAL. Surfaces should use solid #141414 with 1px border-white/10 to create a technical but elegant grid feel."
+  },
+  "visual_enhancers": {
+    "texture": "Apply a subtle static noise overlay (opacity 2-3%, pointer-events-none, fixed) across the entire application to kill digital flatness.",
+    "borders": "Use 1px solid border-white/10 on cards, sections, and the header to create a structural, architectural aesthetic.",
+    "hover_states": "Magnetic hover effect on primary buttons. Image cards should have an inner image scale (1.0 to 1.05) on hover while the container remains overflow-hidden."
+  },
+  "grids": {
+    "bento": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8 md:gap-12",
+    "dense": "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+  },
+  "layouts": {
+    "spacing": "Extremely generous spacing. Use p-8 to p-12 for card padding. Use py-24 to py-32 for section vertical padding.",
+    "hero": "Min-height 100vh. Bottom-aligned or dead-centered content. Extremely large typography. Absolute positioned clipped images floating behind or alongside text.",
+    "manifesto": "Numbered steps using massive typography for the background numbers (text-[12rem] text-white/5), overlaid with crisp, readable content for 'How it works'."
+  },
+  "motion": {
+    "libraries": ["framer-motion", "lenis", "react-fast-marquee"],
+    "specs": {
+      "scroll": "Implement Lenis wrapper for smooth momentum scrolling.",
+      "hero_reveal": "Masked line-by-line text reveal on load. Initial state y: '100%', animate to y: '0%' with clip-path or overflow-hidden wrapper.",
+      "scroll_parallax": "Hero images and background elements move slightly slower than the scroll speed using framer-motion useScroll.",
+      "marquee": "Slow, elegant editorial marquee used as a separator between sections."
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure all text on #0A0A0A has at least 4.5:1 contrast. Use white for primary text, white/70 for secondary.",
+    "testing": "All interactive elements MUST have data-testid attributes (e.g., data-testid='cta-hero-register').",
+    "motion": "Respect prefers-reduced-motion in framer-motion configs."
+  },
+  "media": {
+    "treatment": "Spotlight/clipped frames. High contrast, slightly desaturated photography with subjects popping. Premium quality. Images should sit inside containers with subtle borders."
+  },
+  "image_urls": [
+    {
+      "category": "Hero / CTA",
+      "url": "https://images.unsplash.com/photo-1589386417686-0d34b5903d23?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwzfHxjb25maWRlbnQlMjBibGFjayUyMHlvdW5nJTIwcHJvZmVzc2lvbmFsfGVufDB8fHx8MTc4NTg3NzgyMXww&ixlib=rb-4.1.0&q=85",
+      "description": "Confident black man in black suit smiling - use in hero floating image or primary CTA block."
+    },
+    {
+      "category": "Testimonial / Social Proof",
+      "url": "https://images.unsplash.com/photo-1573496799515-eebbb63814f2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwyfHxjb25maWRlbnQlMjBibGFjayUyMHlvdW5nJTIwcHJvZmVzc2lvbmFsfGVufDB8fHx8MTc4NTg3NzgyMXww&ixlib=rb-4.1.0&q=85",
+      "description": "Crossed arm woman smiling - ideal for success story or testimonial."
+    },
+    {
+      "category": "TAGE MAGE Offer Section",
+      "url": "https://images.unsplash.com/photo-1514369118554-e20d93546b30?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwyfHxtaXhlZCUyMHJhY2UlMjBzdHVkZW50JTIwc3R1ZHlpbmd8ZW58MHx8fHwxNzg1ODc3ODIxfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Woman studying/writing - perfect for the TAGE MAGE preparation package."
+    },
+    {
+      "category": "Job Prep / Employability Offer Section",
+      "url": "https://images.unsplash.com/photo-1573164574511-73c773193279?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxibGFjayUyMHByb2Zlc3Npb25hbHMlMjBtZWV0aW5nfGVufDB8fHx8MTc4NTg3NzgyMXww&ixlib=rb-4.1.0&q=85",
+      "description": "Group of black professionals in a meeting - perfect for the Job/Internship readiness pack."
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Build a Multi-page React Application with standard routing: '/' (Landing), '/inscription' (Registration), and '/admin' (Back-office).",
+    "For the Landing Page: Implement an Awwwards-style experience. Use Framer Motion for line-by-line masked text reveals in the Hero.",
+    "Section Sequence: Hero (Kinetic typography, main CTA) -> Logos/Social Proof -> How it works (Numbered manifesto chapters) -> Offers (2 Tracks: TAGE MAGE vs Pack Emploi) -> Free Content -> Offer Details -> Pricing Plans (TAGE MAGE 299€, Job 499€) -> Testimonials -> FAQ.",
+    "Form constraints (Registration page): Name, Contact (Email/Phone), Track (Job vs TAGE MAGE), Country, Payment plan (1, 2, 3, or 4 installments). Link to this page from Pricing Plan CTAs.",
+    "Admin constraints: A dense Shadcn dashboard listing the registrations. Use 'lucide-react' for icons.",
+    "Color constraints: strictly black, white, and orange. Backgrounds are #0A0A0A, surfaces #141414.",
+    "Font configuration: Import 'Playfair Display', 'Outfit', and 'Manrope' via Google Fonts in index.css.",
+    "Implement Lenis for smooth scrolling. Wrap the landing page in a Lenis provider component."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Break the mold: use asymmetric layouts and extreme scale contrast for typography. Don't make generic centered layouts.",
+    "Create depth through layered design elements with z-index hierarchy, but avoid muddy glassmorphism. Prefer solid black/dark-gray with sharp 1px white/10 borders.",
+    "NEVER use a completely transparent background on headers or overlapping content.",
+    "Do NOT center align the app container. Let the grid system drive alignment.",
+    "Use pill-shaped or sharp rectangular buttons with micro-interactions (hover scale, color fill).",
+    "All interactive elements MUST have 'data-testid' for testing.",
+    "Use sonner for toast notifications on form submissions.",
+    "Do not use generic placeholder text; use contextual copy.",
+    "Do not use generic placeholder images; use the provided image URLs."
+  ]
+}
