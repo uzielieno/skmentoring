@@ -12,7 +12,19 @@ module.exports = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
+      fontFamily: {
+        display: ['Outfit', 'sans-serif'],
+        serif: ['"Playfair Display"', 'serif'],
+        body: ['Manrope', 'sans-serif'],
+      },
       colors: {
+        brand: {
+          DEFAULT: '#FF5E00',
+          hover: '#E65400',
+          ink: '#0A0A0A',
+          surface: '#141414',
+          elevated: '#1F1F1F',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
