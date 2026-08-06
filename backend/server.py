@@ -89,20 +89,6 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class Registration(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    email: EmailStr
-    phone: str
-    track: str                 # "job" | "tage_mage"
-    plan: str                  # "tage_mage" | "pack_emploi"
-    country: str
-    installments: int          # 1..4
-    message: Optional[str] = ""
-    status: str = "nouveau"    # nouveau | contacte | paye
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-
-
 class RegistrationCreate(BaseModel):
     name: str
     email: EmailStr
@@ -112,6 +98,24 @@ class RegistrationCreate(BaseModel):
     country: str
     installments: int = 1
     message: Optional[str] = ""
+    services: List[str] = []
+    total_price: float = 0
+
+
+class Registration(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: EmailStr
+    phone: str
+    track: str
+    plan: str
+    country: str
+    installments: int
+    message: Optional[str] = ""
+    services: List[str] = []
+    total_price: float = 0
+    status: str = "nouveau"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class StatusUpdate(BaseModel):
@@ -122,11 +126,76 @@ class PaymentLinksUpdate(BaseModel):
     links: Dict[str, str]
 
 
-PLAN_LABELS = {"tage_mage": "Préparation TAGE MAGE (299€)", "pack_emploi": "Pack Emploi (499€)"}
+class PlanService(BaseModel):
+    id: str
+    name: str
+    price: float
+
+
+class Plan(BaseModel):
+    id: str
+    name: str
+    price: float
+    tagline: str = ""
+    features: List[str] = []
+    services: List[PlanService] = []
+    type: str = "fixed"  # "fixed" | "custom"
+    track: str = "job"
+    featured: bool = False
+    order: int = 0
+    active: bool = True
+
+
+class SiteSettings(BaseModel):
+    site_name: str = "SK Mentoring"
+    contact_email: str = ""
+    whatsapp: str = ""
+    tagline: str = ""
+
+
+DEFAULT_PLANS: List[dict] = [
+    {"id": "tage_mage", "name": "Préparation TAGE MAGE", "price": 299,
+     "tagline": "Vise le score qui ouvre les grandes écoles.",
+     "features": ["Méthodologie complète des 6 sous-tests", "Banque d'entraînements + examens blancs",
+                  "Sessions de coaching en direct", "Corrections détaillées et suivi de progression",
+                  "Stratégie de gestion du temps le jour J"],
+     "type": "fixed", "track": "tage_mage", "featured": False, "order": 1, "active": True},
+    {"id": "pack_emploi", "name": "Pack Emploi", "price": 499,
+     "tagline": "Du CV à l'offre signée. Stage, alternance ou CDI.",
+     "features": ["CV & profil LinkedIn optimisés par des pros", "Préparation intensive aux entretiens",
+                  "Stratégie de candidature qui sort du lot", "Techniques pour décrocher stage / alternance / CDI",
+                  "Suivi personnalisé jusqu'à la signature"],
+     "type": "fixed", "track": "job", "featured": True, "order": 2, "active": True},
+    {"id": "custom", "name": "À la carte", "price": 0,
+     "tagline": "Choisis exactement les prestations dont tu as besoin.",
+     "features": [],
+     "services": [
+         {"id": "cv", "name": "Optimiser mon CV", "price": 20},
+         {"id": "entretien", "name": "Coaching pour un entretien", "price": 25},
+         {"id": "lm", "name": "Rédaction d'une lettre de motivation", "price": 10},
+     ],
+     "type": "custom", "track": "job", "featured": False, "order": 3, "active": True},
+]
+
+
+PLAN_LABELS = {"tage_mage": "Préparation TAGE MAGE", "pack_emploi": "Pack Emploi", "custom": "Prestations à la carte"}
+
+
+async def get_plan_name(plan_id: str) -> str:
+    p = await db.plans.find_one({"id": plan_id}, {"_id": 0, "name": 1})
+    return p["name"] if p else PLAN_LABELS.get(plan_id, plan_id)
 
 
 async def send_confirmation_email(reg: Registration, payment_link: str):
-    plan_label = PLAN_LABELS.get(reg.plan, reg.plan)
+    plan_name = await get_plan_name(reg.plan)
+    site = await db.settings.find_one({"_id": "site"}) or {}
+    brand = site.get("site_name", "SK Mentoring")
+    details_line = f"Paiement choisi : <b style=\"color:#fff;\">{reg.installments} fois</b>."
+    if reg.services:
+        svc_names = ", ".join(reg.services)
+        details_line += f"<br/>Prestations sélectionnées : <b style=\"color:#fff;\">{svc_names}</b>."
+    if reg.total_price:
+        details_line += f"<br/>Total : <b style=\"color:#FF5E00;\">{reg.total_price:.0f} €</b>."
     pay_block = ""
     if payment_link:
         pay_block = f"""
@@ -137,11 +206,11 @@ async def send_confirmation_email(reg: Registration, payment_link: str):
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0A;padding:40px 0;font-family:Arial,sans-serif;">
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#141414;border:1px solid #27272A;border-radius:16px;padding:40px;">
-          <tr><td style="color:#FF5E00;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Mentoring</td></tr>
+          <tr><td style="color:#FF5E00;font-size:13px;letter-spacing:2px;text-transform:uppercase;">{brand}</td></tr>
           <tr><td style="color:#ffffff;font-size:26px;font-weight:700;padding-top:12px;">Bienvenue {reg.name} 👋</td></tr>
           <tr><td style="color:#A1A1AA;font-size:15px;line-height:1.7;padding-top:16px;">
-            Ton inscription au parcours <b style="color:#fff;">{plan_label}</b> a bien été enregistrée.
-            Paiement choisi : <b style="color:#fff;">{reg.installments} fois</b>.<br/><br/>
+            Ton inscription au parcours <b style="color:#fff;">{plan_name}</b> a bien été enregistrée.<br/>
+            {details_line}<br/><br/>
             Notre équipe te recontacte très vite pour lancer ton accompagnement. En attendant, tu peux finaliser ton paiement ci-dessous.
           </td></tr>
           {pay_block}
@@ -183,6 +252,21 @@ async def get_links_doc() -> Dict[str, str]:
 @api_router.get("/payment-links")
 async def public_payment_links():
     return await get_links_doc()
+
+
+@api_router.get("/plans", response_model=List[Plan])
+async def public_plans():
+    docs = await db.plans.find({"active": True}, {"_id": 0}).sort("order", 1).to_list(50)
+    return docs
+
+
+@api_router.get("/site")
+async def public_site():
+    doc = await db.settings.find_one({"_id": "site"})
+    if not doc:
+        return SiteSettings().model_dump()
+    doc.pop("_id", None)
+    return doc
 
 
 @api_router.post("/inscriptions", response_model=Registration)
@@ -240,6 +324,48 @@ async def admin_set_links(payload: PaymentLinksUpdate, admin: dict = Depends(get
     return await get_links_doc()
 
 
+@api_router.get("/admin/plans", response_model=List[Plan])
+async def admin_list_plans(admin: dict = Depends(get_current_admin)):
+    docs = await db.plans.find({}, {"_id": 0}).sort("order", 1).to_list(50)
+    return docs
+
+
+@api_router.put("/admin/plans/{plan_id}", response_model=Plan)
+async def admin_update_plan(plan_id: str, payload: Plan, admin: dict = Depends(get_current_admin)):
+    doc = payload.model_dump()
+    doc["id"] = plan_id
+    await db.plans.update_one({"id": plan_id}, {"$set": doc}, upsert=True)
+    return doc
+
+
+@api_router.delete("/admin/plans/{plan_id}")
+async def admin_delete_plan(plan_id: str, admin: dict = Depends(get_current_admin)):
+    await db.plans.delete_one({"id": plan_id})
+    return {"ok": True}
+
+
+@api_router.post("/admin/plans/reset")
+async def admin_reset_plans(admin: dict = Depends(get_current_admin)):
+    await db.plans.delete_many({})
+    await db.plans.insert_many([dict(p) for p in DEFAULT_PLANS])
+    return {"ok": True}
+
+
+@api_router.get("/admin/site", response_model=SiteSettings)
+async def admin_get_site(admin: dict = Depends(get_current_admin)):
+    doc = await db.settings.find_one({"_id": "site"})
+    if not doc:
+        return SiteSettings()
+    doc.pop("_id", None)
+    return SiteSettings(**doc)
+
+
+@api_router.put("/admin/site", response_model=SiteSettings)
+async def admin_set_site(payload: SiteSettings, admin: dict = Depends(get_current_admin)):
+    await db.settings.update_one({"_id": "site"}, {"$set": payload.model_dump()}, upsert=True)
+    return payload
+
+
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_current_admin)):
     total = await db.registrations.count_documents({})
@@ -274,6 +400,10 @@ async def startup():
     elif not verify_password(ADMIN_PASSWORD, existing["password_hash"]):
         await db.users.update_one({"email": ADMIN_EMAIL.lower()},
                                   {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}})
+
+    if await db.plans.count_documents({}) == 0:
+        await db.plans.insert_many([dict(p) for p in DEFAULT_PLANS])
+        logger.info("Default plans seeded")
 
 
 @app.on_event("shutdown")

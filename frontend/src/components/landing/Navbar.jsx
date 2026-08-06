@@ -35,7 +35,7 @@ export default function Navbar() {
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 h-20 flex items-center justify-between">
         <Link to="/" data-testid="logo" className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-brand" />
-          <span className="font-display font-extrabold text-xl tracking-tight text-white">Mentoring</span>
+          <span className="font-display font-extrabold text-xl tracking-tight text-white">SK Mentoring</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-9">
