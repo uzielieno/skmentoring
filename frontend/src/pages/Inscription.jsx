@@ -18,7 +18,7 @@ export default function Inscription() {
   const [plans, setPlans] = useState([]);
   const [planId, setPlanId] = useState(initialPlan);
   const [services, setServices] = useState(Object.fromEntries(initialServices.map((s) => [s, true])));
-  const [form, setForm] = useState({ name: "", email: "", phone: "", country: "", installments: "1", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", country: "", installments: "1", message: "", level: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(null);
 
@@ -50,7 +50,7 @@ export default function Inscription() {
         name: form.name, email: form.email, phone: form.phone,
         track: plan.track || "job", plan: plan.id, country: form.country,
         installments: Number(form.installments), message: form.message,
-        services: svcIds, total_price: total,
+        services: svcIds, total_price: total, level: form.level,
       };
       await api.post("/inscriptions", payload);
       const { data: links } = await api.get("/payment-links");
@@ -164,12 +164,21 @@ export default function Inscription() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-white/70">Paiement en</Label>
-                  <Select value={form.installments} onValueChange={set("installments")}>
-                    <SelectTrigger data-testid="select-installments" className="mt-2 bg-brand-surface border-white/10 h-12 text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-brand-elevated border-white/10 text-white">{[1, 2, 3, 4].map((n) => <SelectItem key={n} value={String(n)}>{n} fois</SelectItem>)}</SelectContent>
+                  <Label className="text-white/70">Niveau</Label>
+                  <Select value={form.level} onValueChange={set("level")}>
+                    <SelectTrigger data-testid="select-level" className="mt-2 bg-brand-surface border-white/10 h-12 text-white"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                    <SelectContent className="bg-brand-elevated border-white/10 text-white">
+                      {["Licence 2","Licence 3","Master 1","Master 2","Jeune diplômé","Autre"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label className="text-white/70">Paiement en</Label>
+                <Select value={form.installments} onValueChange={set("installments")}>
+                  <SelectTrigger data-testid="select-installments" className="mt-2 bg-brand-surface border-white/10 h-12 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-brand-elevated border-white/10 text-white">{[1, 2, 3, 4].map((n) => <SelectItem key={n} value={String(n)}>{n} fois</SelectItem>)}</SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="message" className="text-white/70">Un mot sur ton objectif (facultatif)</Label>

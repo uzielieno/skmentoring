@@ -100,6 +100,7 @@ class RegistrationCreate(BaseModel):
     message: Optional[str] = ""
     services: List[str] = []
     total_price: float = 0
+    level: str = ""
 
 
 class Registration(BaseModel):
@@ -110,10 +111,11 @@ class Registration(BaseModel):
     track: str
     plan: str
     country: str
-    installments: int
+    installments: int          # 1..4
     message: Optional[str] = ""
     services: List[str] = []
     total_price: float = 0
+    level: str = ""
     status: str = "nouveau"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -144,6 +146,7 @@ class Plan(BaseModel):
     featured: bool = False
     order: int = 0
     active: bool = True
+    deletable: bool = True
 
 
 class SiteSettings(BaseModel):
@@ -159,13 +162,13 @@ DEFAULT_PLANS: List[dict] = [
      "features": ["Méthodologie complète des 6 sous-tests", "Banque d'entraînements + examens blancs",
                   "Sessions de coaching en direct", "Corrections détaillées et suivi de progression",
                   "Stratégie de gestion du temps le jour J"],
-     "type": "fixed", "track": "tage_mage", "featured": False, "order": 1, "active": True},
+     "type": "fixed", "track": "tage_mage", "featured": False, "order": 1, "active": True, "deletable": False},
     {"id": "pack_emploi", "name": "Pack Emploi", "price": 499,
      "tagline": "Du CV à l'offre signée. Stage, alternance ou CDI.",
      "features": ["CV & profil LinkedIn optimisés par des pros", "Préparation intensive aux entretiens",
                   "Stratégie de candidature qui sort du lot", "Techniques pour décrocher stage / alternance / CDI",
                   "Suivi personnalisé jusqu'à la signature"],
-     "type": "fixed", "track": "job", "featured": True, "order": 2, "active": True},
+     "type": "fixed", "track": "job", "featured": True, "order": 2, "active": True, "deletable": False},
     {"id": "custom", "name": "À la carte", "price": 0,
      "tagline": "Choisis exactement les prestations dont tu as besoin.",
      "features": [],
@@ -174,7 +177,7 @@ DEFAULT_PLANS: List[dict] = [
          {"id": "entretien", "name": "Coaching pour un entretien", "price": 25},
          {"id": "lm", "name": "Rédaction d'une lettre de motivation", "price": 10},
      ],
-     "type": "custom", "track": "job", "featured": False, "order": 3, "active": True},
+     "type": "custom", "track": "job", "featured": False, "order": 3, "active": True, "deletable": False},
 ]
 
 
@@ -332,14 +335,32 @@ async def admin_list_plans(admin: dict = Depends(get_current_admin)):
 
 @api_router.put("/admin/plans/{plan_id}", response_model=Plan)
 async def admin_update_plan(plan_id: str, payload: Plan, admin: dict = Depends(get_current_admin)):
+    existing = await db.plans.find_one({"id": plan_id}, {"_id": 0, "deletable": 1})
     doc = payload.model_dump()
     doc["id"] = plan_id
+    if existing and existing.get("deletable") is False:
+        doc["deletable"] = False  # protect defaults
     await db.plans.update_one({"id": plan_id}, {"$set": doc}, upsert=True)
+    return doc
+
+
+@api_router.post("/admin/plans", response_model=Plan)
+async def admin_create_plan(payload: Plan, admin: dict = Depends(get_current_admin)):
+    if await db.plans.find_one({"id": payload.id}):
+        raise HTTPException(status_code=400, detail="Un plan avec cet identifiant existe déjà.")
+    doc = payload.model_dump()
+    doc["deletable"] = True
+    await db.plans.insert_one(dict(doc))
     return doc
 
 
 @api_router.delete("/admin/plans/{plan_id}")
 async def admin_delete_plan(plan_id: str, admin: dict = Depends(get_current_admin)):
+    p = await db.plans.find_one({"id": plan_id}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Plan introuvable")
+    if p.get("deletable") is False:
+        raise HTTPException(status_code=400, detail="Ce plan ne peut pas être supprimé.")
     await db.plans.delete_one({"id": plan_id})
     return {"ok": True}
 
