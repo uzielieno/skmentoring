@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ArrowUpRight, Star, Quote, Plus } from "lucide-react";
+import { Check, ArrowUpRight, Star, Quote, Plus, Linkedin, MessageCircle, Instagram, Youtube, Facebook, Music2 } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "../ui/accordion";
@@ -65,8 +65,18 @@ function FixedCard({ plan }) {
       <h3 className="font-display font-bold text-2xl text-white">{plan.name}</h3>
       <p className="mt-2 text-white/55 text-sm">{plan.tagline}</p>
       <div className="mt-8 flex items-end gap-1">
-        <span className="font-serif text-6xl text-white">{plan.price}€</span>
-        <span className="mb-2 text-white/50 text-sm">/ parcours</span>
+        {plan.id === "pack_emploi" ? (
+          <>
+            <span className="text-white/60 text-sm mb-3 mr-2">à partir de</span>
+            <span className="font-serif text-6xl text-white">150€</span>
+            <span className="mb-2 text-white/50 text-sm">/ parcours</span>
+          </>
+        ) : (
+          <>
+            <span className="font-serif text-6xl text-white">{plan.price}€</span>
+            <span className="mb-2 text-white/50 text-sm">/ parcours</span>
+          </>
+        )}
       </div>
       <ul className="mt-8 space-y-3 flex-1">
         {(plan.features || []).map((f) => (
@@ -182,12 +192,33 @@ export function FinalCta() {
 }
 
 export function Footer() {
+  const [site, setSite] = useState({});
+  useEffect(() => { api.get("/site").then(({ data }) => setSite(data)).catch(() => {}); }, []);
+  const socials = [
+    { k: "linkedin", I: Linkedin, l: "LinkedIn" },
+    { k: "whatsapp_url", I: MessageCircle, l: "WhatsApp" },
+    { k: "instagram", I: Instagram, l: "Instagram" },
+    { k: "youtube", I: Youtube, l: "YouTube" },
+    { k: "tiktok", I: Music2, l: "TikTok" },
+    { k: "facebook", I: Facebook, l: "Facebook" },
+  ];
+  const visible = socials.filter((s) => (site[s.k] || "").trim());
   return (
     <footer className="border-t border-white/10 bg-brand-ink" data-testid="footer">
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 py-16 grid md:grid-cols-4 gap-10">
         <div className="md:col-span-2">
           <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-brand" /><span className="font-display font-extrabold text-xl text-white">SK Mentoring</span></div>
           <p className="mt-4 text-white/50 max-w-sm leading-relaxed">L'accompagnement complet des étudiants et jeunes diplômés. Du TAGE MAGE à l'emploi, on vise le résultat.</p>
+          {visible.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-2" data-testid="footer-socials">
+              {visible.map((s) => (
+                <a key={s.k} href={site[s.k]} target="_blank" rel="noreferrer" aria-label={s.l} data-testid={`social-${s.k}`}
+                   className="grid place-items-center w-11 h-11 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-brand-ink hover:bg-brand hover:border-brand transition-all">
+                  <s.I size={17} />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <div className="text-sm font-semibold text-white mb-4">Parcours</div>

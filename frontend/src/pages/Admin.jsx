@@ -174,7 +174,7 @@ function InscriptionsView({ rows, plans, onChangeStatus, loading, onReload }) {
                   <TableCell className="font-medium text-white">{r.name}<div className="text-xs text-white/40">{new Date(r.created_at).toLocaleDateString("fr-FR")}</div></TableCell>
                   <TableCell className="text-white/70 text-sm">{r.email}<div className="text-xs text-white/40">{r.phone}</div></TableCell>
                   <TableCell className="text-white/70 text-sm">{r.level || "—"}</TableCell>
-                  <TableCell><span className="rounded-full bg-white/10 px-3 py-1 text-xs whitespace-nowrap">{planLabel(r.plan)}</span>{r.services?.length ? <div className="text-xs text-white/40 mt-1">{r.services.join(", ")}</div> : null}{r.total_price ? <div className="text-xs text-brand mt-0.5">{r.total_price}€</div> : null}</TableCell>
+                  <TableCell><span className="rounded-full bg-white/10 px-3 py-1 text-xs whitespace-nowrap">{planLabel(r.plan)}</span>{r.job_type ? <div className="text-xs text-white/50 mt-1">{r.job_type === "cdi" ? "CDI" : "Stage / Alternance"}</div> : null}{r.services?.length ? <div className="text-xs text-white/40 mt-1">{r.services.join(", ")}</div> : null}{r.total_price ? <div className="text-xs text-brand mt-0.5">{r.total_price}€</div> : null}</TableCell>
                   <TableCell className="text-white/70 text-sm">{r.country}</TableCell>
                   <TableCell className="text-white/70 text-sm">{r.installments} fois</TableCell>
                   <TableCell className="text-white/70 text-sm max-w-[240px]"><div className="whitespace-pre-wrap">{r.message || <span className="text-white/30">—</span>}</div></TableCell>
@@ -307,7 +307,13 @@ function LinksView({ plans }) {
   const combos = useMemo(() => {
     const map = {};
     plans.filter((p) => p.active).forEach((p) => {
-      if (p.type === "fixed") {
+      if (p.id === "pack_emploi") {
+        const groups = [];
+        [{ id: "stage_alt", label: "Stage / Alternance (150€)" }, { id: "cdi", label: "CDI (499€)" }].forEach((jt) => {
+          [1, 2, 3, 4].forEach((n) => groups.push({ key: `pack_emploi_${jt.id}_${n}`, label: `${jt.label} · ${n} fois` }));
+        });
+        map[p.name] = groups;
+      } else if (p.type === "fixed") {
         map[p.name] = [1, 2, 3, 4].map((n) => ({ key: `${p.id}_${n}`, label: `${n} fois` }));
       } else if (p.type === "custom") {
         const ids = (p.services || []).map((s) => s.id).sort();
@@ -361,28 +367,53 @@ function LinksView({ plans }) {
 
 /* ------------------ SETTINGS ------------------ */
 function SettingsView() {
-  const [s, setS] = useState({ site_name: "", contact_email: "", whatsapp: "", tagline: "" });
+  const [s, setS] = useState({});
   const [saving, setSaving] = useState(false);
   useEffect(() => { api.get("/admin/site").then(({ data }) => setS(data)).catch(() => {}); }, []);
   const save = async () => {
     setSaving(true);
-    try { await api.put("/admin/site", s); toast.success("Enregistré."); }
-    catch { toast.error("Échec."); } finally { setSaving(false); }
+    try {
+      const payload = {
+        site_name: s.site_name || "", contact_email: s.contact_email || "",
+        whatsapp: s.whatsapp || "", tagline: s.tagline || "",
+        linkedin: s.linkedin || "", whatsapp_url: s.whatsapp_url || "",
+        instagram: s.instagram || "", youtube: s.youtube || "",
+        tiktok: s.tiktok || "", facebook: s.facebook || "",
+      };
+      await api.put("/admin/site", payload); toast.success("Enregistré.");
+    } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail) || "Échec."); }
+    finally { setSaving(false); }
   };
-  const fields = [
+  const general = [
     { k: "site_name", l: "Nom du site" }, { k: "contact_email", l: "Email de contact" },
-    { k: "whatsapp", l: "WhatsApp / Téléphone" }, { k: "tagline", l: "Tagline" },
+    { k: "whatsapp", l: "WhatsApp / Téléphone (affichage)" }, { k: "tagline", l: "Tagline" },
   ];
+  const socials = [
+    { k: "linkedin", l: "LinkedIn (URL)" },
+    { k: "whatsapp_url", l: "WhatsApp (lien wa.me/…)" },
+    { k: "instagram", l: "Instagram (URL)" },
+    { k: "youtube", l: "YouTube (URL)" },
+    { k: "tiktok", l: "TikTok (URL)" },
+    { k: "facebook", l: "Facebook (URL)" },
+  ];
+  const renderField = (f) => (
+    <div key={f.k}>
+      <Label className="text-white/60 text-xs">{f.l}</Label>
+      <Input data-testid={`site-${f.k}`} value={s[f.k] || ""} onChange={(e) => setS((prev) => ({ ...prev, [f.k]: e.target.value }))} className="mt-1 bg-brand-ink border-white/10 h-10 text-white text-sm" />
+    </div>
+  );
   return (
-    <div className="rounded-2xl border border-white/10 bg-brand-surface p-6" data-testid="settings-view">
-      <div className="flex items-center gap-2 mb-5"><Settings className="text-brand" size={18} /><h3 className="font-display font-bold">Paramètres du site</h3></div>
-      <div className="grid md:grid-cols-2 gap-4">
-        {fields.map((f) => (
-          <div key={f.k}><Label className="text-white/60 text-xs">{f.l}</Label>
-            <Input data-testid={`site-${f.k}`} value={s[f.k] || ""} onChange={(e) => setS({ ...s, [f.k]: e.target.value })} className="mt-1 bg-brand-ink border-white/10 h-10 text-white text-sm" /></div>
-        ))}
+    <div className="space-y-6" data-testid="settings-view">
+      <div className="rounded-2xl border border-white/10 bg-brand-surface p-6">
+        <div className="flex items-center gap-2 mb-5"><Settings className="text-brand" size={18} /><h3 className="font-display font-bold">Général</h3></div>
+        <div className="grid md:grid-cols-2 gap-4">{general.map(renderField)}</div>
       </div>
-      <button onClick={save} disabled={saving} data-testid="save-site" className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand-ink hover:scale-[1.02] transition-transform">{saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Enregistrer</button>
+      <div className="rounded-2xl border border-white/10 bg-brand-surface p-6">
+        <h3 className="font-display font-bold mb-5">Réseaux sociaux</h3>
+        <p className="text-xs text-white/50 mb-4">Colle l'URL complète (https://…). Les boutons s'affichent automatiquement dans le footer si l'URL est renseignée.</p>
+        <div className="grid md:grid-cols-2 gap-4">{socials.map(renderField)}</div>
+      </div>
+      <button onClick={save} disabled={saving} data-testid="save-site" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold text-brand-ink hover:scale-[1.02] transition-transform">{saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Enregistrer les paramètres</button>
     </div>
   );
 }

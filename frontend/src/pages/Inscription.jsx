@@ -18,7 +18,7 @@ export default function Inscription() {
   const [plans, setPlans] = useState([]);
   const [planId, setPlanId] = useState(initialPlan);
   const [services, setServices] = useState(Object.fromEntries(initialServices.map((s) => [s, true])));
-  const [form, setForm] = useState({ name: "", email: "", phone: "", country: "", installments: "1", message: "", level: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", country: "", installments: "1", message: "", level: "", job_type: "stage_alt" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(null);
 
@@ -26,8 +26,11 @@ export default function Inscription() {
 
   const plan = useMemo(() => plans.find((p) => p.id === planId) || plans[0], [plans, planId]);
   const isCustom = plan?.type === "custom";
+  const isPackEmploi = plan?.id === "pack_emploi";
   const total = isCustom
     ? (plan.services || []).reduce((s, x) => s + (services[x.id] ? x.price : 0), 0)
+    : isPackEmploi
+    ? (form.job_type === "cdi" ? 499 : 150)
     : plan?.price || 0;
 
   const set = (k) => (e) => setForm({ ...form, [k]: e?.target ? e.target.value : e });
@@ -51,11 +54,22 @@ export default function Inscription() {
         track: plan.track || "job", plan: plan.id, country: form.country,
         installments: Number(form.installments), message: form.message,
         services: svcIds, total_price: total, level: form.level,
+        job_type: isPackEmploi ? form.job_type : "",
       };
       await api.post("/inscriptions", payload);
       const { data: links } = await api.get("/payment-links");
-      const link = links[`${plan.id}_${form.installments}`] || "";
-      setDone({ link });
+      const linkKey = isPackEmploi
+        ? `pack_emploi_${form.job_type}_${form.installments}`
+        : `${plan.id}_${form.installments}`;
+      const link = links[linkKey] || "";
+      setDone({
+        link,
+        planName: plan.name,
+        installments: form.installments,
+        total,
+        services: svcIds,
+        jobLabel: isPackEmploi ? (form.job_type === "cdi" ? "CDI" : "Stage / Alternance") : "",
+      });
       toast.success("Inscription enregistrée ! Vérifie ta boîte mail.");
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail) || "Erreur lors de l'envoi.");
@@ -82,18 +96,34 @@ export default function Inscription() {
 
       <div className="flex items-center justify-center p-6 md:p-14">
         {done ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md text-center" data-testid="success-block">
-            <div className="mx-auto grid place-items-center w-16 h-16 rounded-full bg-brand/15 text-brand"><CheckCircle2 size={32} /></div>
-            <h2 className="mt-6 font-display font-extrabold text-3xl">Inscription confirmée 🎯</h2>
-            <p className="mt-4 text-white/60">Un email de confirmation vient de t'être envoyé. Dernière étape : finaliser ton paiement.</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md" data-testid="success-block">
+            <div className="text-center">
+              <div className="mx-auto grid place-items-center w-16 h-16 rounded-full bg-brand/15 text-brand"><CheckCircle2 size={32} /></div>
+              <h2 className="mt-6 font-display font-extrabold text-3xl">Dernière étape : ton paiement</h2>
+              <p className="mt-3 text-white/60 text-sm">Un email de confirmation vient de t'être envoyé.</p>
+            </div>
+            <div className="mt-8 rounded-2xl border border-white/10 bg-brand-surface p-6" data-testid="order-recap">
+              <div className="text-xs uppercase tracking-widest text-white/40">Récapitulatif</div>
+              <div className="mt-3 flex items-start justify-between">
+                <div>
+                  <div className="font-display font-bold text-white">{done.planName}</div>
+                  {done.jobLabel ? <div className="text-xs text-white/50 mt-0.5">{done.jobLabel}</div> : null}
+                  {done.services?.length ? <div className="text-xs text-white/50 mt-0.5">{done.services.join(" · ")}</div> : null}
+                  <div className="text-xs text-white/50 mt-0.5">Paiement en {done.installments} fois</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-serif text-3xl text-brand">{done.total}€</div>
+                </div>
+              </div>
+            </div>
             {done.link ? (
               <a href={done.link} target="_blank" rel="noreferrer" data-testid="payment-link">
-                <button className="mt-8 w-full rounded-full bg-brand py-4 font-bold text-brand-ink hover:scale-[1.02] transition-transform inline-flex items-center justify-center gap-2">Finaliser mon paiement <ArrowUpRight size={18} /></button>
+                <button className="mt-6 w-full rounded-full bg-brand py-4 font-bold text-brand-ink hover:scale-[1.02] transition-transform inline-flex items-center justify-center gap-2">Payer maintenant <ArrowUpRight size={18} /></button>
               </a>
             ) : (
-              <div className="mt-8 rounded-2xl border border-white/10 bg-brand-surface p-6 text-sm text-white/70">Notre équipe te transmettra le lien de paiement adapté à ton pays très rapidement.</div>
+              <div className="mt-6 rounded-2xl border border-white/10 bg-brand-surface p-6 text-sm text-white/70 text-center">Le lien de paiement pour cette combinaison n'est pas encore configuré. Notre équipe te contacte très vite.</div>
             )}
-            <Link to="/" className="mt-6 inline-block text-sm text-white/50 hover:text-white underline underline-offset-4">Retour à l'accueil</Link>
+            <Link to="/" className="mt-6 block text-center text-sm text-white/50 hover:text-white underline underline-offset-4">Retour à l'accueil</Link>
           </motion.div>
         ) : (
           <form onSubmit={submit} className="w-full max-w-lg" data-testid="inscription-form">
@@ -109,12 +139,24 @@ export default function Inscription() {
                     planId === p.id ? "border-brand bg-brand/10" : "border-white/10 bg-brand-surface hover:border-white/30"
                   }`}>
                   <div className="text-xs font-semibold text-white">{p.name}</div>
-                  <div className="text-brand text-sm font-bold mt-1">{p.type === "custom" ? "à la carte" : `${p.price}€`}</div>
+                  <div className="text-brand text-sm font-bold mt-1">{p.type === "custom" ? "à la carte" : p.id === "pack_emploi" ? "dès 150€" : `${p.price}€`}</div>
                 </button>
               ))}
             </div>
 
             {/* Custom services picker */}
+            {isPackEmploi && (
+              <div className="mt-6" data-testid="jobtype-picker">
+                <Label className="text-white/70">Je recherche</Label>
+                <Select value={form.job_type} onValueChange={set("job_type")}>
+                  <SelectTrigger data-testid="select-jobtype" className="mt-2 bg-brand-surface border-white/10 h-12 text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-brand-elevated border-white/10 text-white">
+                    <SelectItem value="stage_alt">Stage / Alternance — 150€</SelectItem>
+                    <SelectItem value="cdi">CDI — 499€</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {isCustom && (
               <div className="mt-6 space-y-2" data-testid="services-picker">
                 <Label className="text-white/70">Prestations souhaitées</Label>

@@ -101,6 +101,7 @@ class RegistrationCreate(BaseModel):
     services: List[str] = []
     total_price: float = 0
     level: str = ""
+    job_type: str = ""
 
 
 class Registration(BaseModel):
@@ -116,6 +117,7 @@ class Registration(BaseModel):
     services: List[str] = []
     total_price: float = 0
     level: str = ""
+    job_type: str = ""
     status: str = "nouveau"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -154,6 +156,12 @@ class SiteSettings(BaseModel):
     contact_email: str = ""
     whatsapp: str = ""
     tagline: str = ""
+    linkedin: str = ""
+    whatsapp_url: str = ""
+    instagram: str = ""
+    youtube: str = ""
+    tiktok: str = ""
+    facebook: str = ""
 
 
 DEFAULT_PLANS: List[dict] = [

@@ -140,40 +140,51 @@ export function Offers() {
   );
 }
 
-/* ---------- Free content block ---------- */
+/* ---------- Mentors block ---------- */
 export function FreeContent() {
-  const items = [
-    { icon: Youtube, t: "Chaîne YouTube", d: "Des vidéos gratuites pour progresser dès aujourd'hui." },
-    { icon: FileText, t: "Modèles de CV", d: "Des templates premium prêts à personnaliser." },
-    { icon: Linkedin, t: "Guide LinkedIn", d: "Les réglages qui rendent ton profil irrésistible." },
-    { icon: MessageSquare, t: "Communauté WhatsApp", d: "Des conseils et de la motivation, chaque semaine." },
-  ];
   return (
-    <section className="max-w-[1400px] mx-auto px-6 md:px-10 py-28" data-testid="free-content">
-      <div className="rounded-[2.5rem] border border-white/10 bg-brand-surface p-10 md:p-16">
+    <section className="max-w-[1400px] mx-auto px-6 md:px-10 py-28" data-testid="mentors">
+      <div className="rounded-[2.5rem] border border-white/10 bg-brand-surface p-8 md:p-14">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <Reveal>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-1.5 text-xs uppercase tracking-widest text-white/70">
-              <Play size={12} className="text-brand" /> 100% gratuit
+              <span className="w-1.5 h-1.5 rounded-full bg-brand" /> Nos mentors
             </span>
             <h2 className="mt-6 font-display font-extrabold text-3xl md:text-5xl text-white tracking-tight">
-              Commence à progresser, gratuitement.
+              Des mentors qui ont fait le chemin avant toi.
             </h2>
-            <p className="mt-4 text-white/60 leading-relaxed max-w-md">
-              Avant même de t'inscrire, profite de nos ressources offertes. Teste notre approche, ressens la différence.
+            <p className="mt-5 text-white/60 leading-relaxed max-w-md">
+              Diplômés des meilleures écoles, passés par des grandes entreprises et fondateurs de leur propre parcours — nos mentors t'accompagnent avec l'exigence d'un coach et la bienveillance d'un grand frère. Ils partagent leur méthode, leurs erreurs et leurs raccourcis pour t'éviter de perdre du temps.
             </p>
+            <ul className="mt-8 space-y-3 text-white/80">
+              {["Parcours réels, résultats prouvés", "Écoute franche et retours actionnables", "Accompagnement humain, jamais scolaire"].map((t) => (
+                <li key={t} className="flex items-start gap-3"><CheckCircle2 size={18} className="text-brand mt-0.5 shrink-0" /> {t}</li>
+              ))}
+            </ul>
           </Reveal>
-          <div className="grid sm:grid-cols-2 gap-5">
-            {items.map((it, i) => (
-              <Reveal key={it.t} delay={i * 0.07}>
-                <div className="h-full rounded-2xl border border-white/10 bg-brand-ink p-6 hover:border-brand/40 transition-colors duration-300">
-                  <it.icon className="text-brand" size={24} />
-                  <h4 className="mt-4 font-display font-bold text-white">{it.t}</h4>
-                  <p className="mt-1.5 text-sm text-white/55">{it.d}</p>
+
+          <Reveal delay={0.1}>
+            <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden border border-white/10 group" data-testid="mentors-media">
+              <div className="grid grid-cols-2 h-full">
+                <div className="relative overflow-hidden border-r border-white/10">
+                  <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=900&auto=format&fit=crop&q=80"
+                    alt="Mentor SK Mentoring" className="w-full h-full object-cover grayscale-[10%] transition-transform duration-700 group-hover:scale-105" />
                 </div>
-              </Reveal>
-            ))}
-          </div>
+                <div className="relative overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&auto=format&fit=crop&q=80"
+                    alt="Mentor SK Mentoring" className="w-full h-full object-cover grayscale-[10%] transition-transform duration-700 group-hover:scale-105" />
+                </div>
+              </div>
+              <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-brand-ink to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between rounded-2xl bg-brand-ink/80 backdrop-blur-md border border-white/10 px-5 py-3.5">
+                <div>
+                  <div className="text-white text-sm font-display font-bold">Rencontre l'équipe</div>
+                  <div className="text-white/60 text-xs mt-0.5">Vidéo bientôt disponible</div>
+                </div>
+                <span className="grid place-items-center w-10 h-10 rounded-full bg-brand text-brand-ink"><Play size={16} /></span>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>

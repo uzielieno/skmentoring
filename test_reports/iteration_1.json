@@ -1,0 +1,26 @@
+{
+  "summary": "Full backend + frontend validation of SK Mentoring landing conversion changes: mentors section, pack_emploi 'à partir de 150€', 6-social footer (ordered), admin settings persistence, inscription Pack Emploi + job_type flow, success order-recap, admin payment links (40 inputs incl. 8 pack_emploi variants). Backend: 6/6 pytest passed. Frontend: all flows verified. Reproduced and FIXED the user-reported bug 'Paramètres save ne fonctionne pas' (React anti-pattern: inner Field component being redefined on every render caused inputs to remount on every keystroke, losing focus/typed characters).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "None required from main agent. Settings-save bug was fixed by testing agent (see updated_files)."
+  ],
+  "critical_code_review_comments": [
+    "Admin.jsx SettingsView had `const Field = ({k,l}) => (...)` defined INSIDE the component body. Each parent re-render created a new component reference, causing React to unmount+remount every Input on every keystroke. This is the direct RCA of the reported 'Enregistrer ne fonctionne pas' — users could only type one character before the input detached and lost focus. FIXED by replacing with a plain `renderField` callback returning JSX (no new component type per render) and using functional setState `setS(prev => ({...prev,[k]:v}))`.",
+    "Same pattern should be audited elsewhere in Admin.jsx / other views to prevent future occurrences.",
+    "Minor: Inscription page has two elements matching text 'CDI — 499€' (native <select> option + radix SelectItem span) causing strict-mode locator conflicts. Not a bug but tests should use [role='option'] to target the radix listbox."
+  ],
+  "updated_files": ["/app/frontend/src/pages/Admin.jsx", "/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@mentoring.com / Mentoring2025!",
+  "seed_data_creation": "Backend tests wrote sample social URLs into site settings, sample payment links (pack_emploi_stage_alt_1..2, pack_emploi_cdi_1, tage_mage_1), and TEST_ inscriptions for pack_emploi stage_alt (150€, 2x) and cdi (499€, 1x). Frontend Playwright further overwrote site socials with .../skm2 style URLs during settings persistence test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite at /app/backend/tests/backend_test.py (6 tests, all passing). Admin settings bug fix applied by moving inner Field component out — verify no regression when Admin.jsx is modified in future. Footer socials order in DOM confirmed: linkedin, whatsapp_url, instagram, youtube, tiktok, facebook. Admin LinksView renders 40 link-* inputs (4 tage_mage + 8 pack_emploi + 28 custom). Note that data-testid prefix 'social-' collides with an unrelated section testid 'social-proof' — filter carefully.",
+  "rca_of_the_issue": "User bug 'Paramètres save ne fonctionne pas': RCA = React anti-pattern in Admin.jsx SettingsView. The `Field` functional component was declared inside the parent function scope, so a new function identity was produced on every render. React's reconciler treats new component types as different → unmount/mount cycle on every state update → each Input DOM node was destroyed after processing a single keystroke, causing loss of focus and (partially) of typed chars. Reproduction: try to type more than one char in any Réseaux sociaux field → only the state.change chain succeeds for the initial char while subsequent keys land on the detached node. Fix: replaced with `renderField` returning JSX (stable Input identity) + functional setState. Verified: typed multi-char URLs into all 6 social fields, clicked save-site, reloaded /admin, values persisted."
+}
