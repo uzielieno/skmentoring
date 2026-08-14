@@ -136,6 +136,12 @@ class PlanService(BaseModel):
     price: float
 
 
+class PlanVariant(BaseModel):
+    id: str
+    name: str
+    price: float
+
+
 class Plan(BaseModel):
     id: str
     name: str
@@ -143,6 +149,7 @@ class Plan(BaseModel):
     tagline: str = ""
     features: List[str] = []
     services: List[PlanService] = []
+    variants: List[PlanVariant] = []
     type: str = "fixed"  # "fixed" | "custom"
     track: str = "job"
     featured: bool = False
@@ -171,11 +178,15 @@ DEFAULT_PLANS: List[dict] = [
                   "Sessions de coaching en direct", "Corrections détaillées et suivi de progression",
                   "Stratégie de gestion du temps le jour J"],
      "type": "fixed", "track": "tage_mage", "featured": False, "order": 1, "active": True, "deletable": False},
-    {"id": "pack_emploi", "name": "Pack Emploi", "price": 499,
+    {"id": "pack_emploi", "name": "Pack Emploi", "price": 150,
      "tagline": "Du CV à l'offre signée. Stage, alternance ou CDI.",
      "features": ["CV & profil LinkedIn optimisés par des pros", "Préparation intensive aux entretiens",
                   "Stratégie de candidature qui sort du lot", "Techniques pour décrocher stage / alternance / CDI",
                   "Suivi personnalisé jusqu'à la signature"],
+     "variants": [
+         {"id": "stage_alt", "name": "Stage / Alternance", "price": 150},
+         {"id": "cdi", "name": "CDI", "price": 499},
+     ],
      "type": "fixed", "track": "job", "featured": True, "order": 2, "active": True, "deletable": False},
     {"id": "custom", "name": "À la carte", "price": 0,
      "tagline": "Choisis exactement les prestations dont tu as besoin.",

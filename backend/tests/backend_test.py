@@ -40,7 +40,43 @@ def test_plans_public(client):
     assert r.status_code == 200
     data = r.json()
     ids = [p["id"] for p in data]
-    assert "tage_mage" in ids and "pack_emploi" in ids
+    assert "tage_mage" in ids and "pack_emploi" in ids and "custom" in ids
+    by_id = {p["id"]: p for p in data}
+    # pack_emploi must have both variants
+    pe_variants = by_id["pack_emploi"].get("variants", [])
+    vids = {v["id"]: v["price"] for v in pe_variants}
+    assert vids.get("stage_alt") == 150, f"stage_alt price expected 150, got {vids}"
+    assert vids.get("cdi") == 499, f"cdi price expected 499, got {vids}"
+    # tage_mage & custom variants empty
+    assert by_id["tage_mage"].get("variants", []) == []
+    assert by_id["custom"].get("variants", []) == []
+
+
+def test_admin_update_pack_emploi_variants_and_reset(auth_client, client):
+    # Get pack_emploi
+    r = auth_client.get(f"{API}/admin/plans")
+    assert r.status_code == 200
+    plans = {p["id"]: p for p in r.json()}
+    pe = plans["pack_emploi"]
+    # Modify variants
+    pe["variants"] = [
+        {"id": "stage_alt", "name": "Stage / Alternance", "price": 180},
+        {"id": "cdi", "name": "CDI", "price": 550},
+    ]
+    r = auth_client.put(f"{API}/admin/plans/pack_emploi", json=pe)
+    assert r.status_code == 200, r.text
+    # Verify public reflects
+    r2 = client.get(f"{API}/plans")
+    by_id = {p["id"]: p for p in r2.json()}
+    vids = {v["id"]: v["price"] for v in by_id["pack_emploi"]["variants"]}
+    assert vids["stage_alt"] == 180 and vids["cdi"] == 550
+    # Reset to defaults for other tests
+    rr = auth_client.post(f"{API}/admin/plans/reset")
+    assert rr.status_code == 200
+    r3 = client.get(f"{API}/plans")
+    by_id2 = {p["id"]: p for p in r3.json()}
+    vids2 = {v["id"]: v["price"] for v in by_id2["pack_emploi"]["variants"]}
+    assert vids2["stage_alt"] == 150 and vids2["cdi"] == 499
 
 
 def test_site_public(client):

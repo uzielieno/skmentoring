@@ -65,10 +65,10 @@ function FixedCard({ plan }) {
       <h3 className="font-display font-bold text-2xl text-white">{plan.name}</h3>
       <p className="mt-2 text-white/55 text-sm">{plan.tagline}</p>
       <div className="mt-8 flex items-end gap-1">
-        {plan.id === "pack_emploi" ? (
+        {plan.variants && plan.variants.length > 0 ? (
           <>
             <span className="text-white/60 text-sm mb-3 mr-2">à partir de</span>
-            <span className="font-serif text-6xl text-white">150€</span>
+            <span className="font-serif text-6xl text-white">{Math.min(...plan.variants.map((v) => v.price))}€</span>
             <span className="mb-2 text-white/50 text-sm">/ parcours</span>
           </>
         ) : (
@@ -209,6 +209,20 @@ export function Footer() {
         <div className="md:col-span-2">
           <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-brand" /><span className="font-display font-extrabold text-xl text-white">SK Mentoring</span></div>
           <p className="mt-4 text-white/50 max-w-sm leading-relaxed">L'accompagnement complet des étudiants et jeunes diplômés. Du TAGE MAGE à l'emploi, on vise le résultat.</p>
+          <div className="mt-5 space-y-1.5 text-sm">
+            {site.whatsapp && (
+              <div className="flex items-center gap-2 text-white/70" data-testid="footer-phone">
+                <MessageCircle size={15} className="text-brand" />
+                <a href={site.whatsapp_url || `https://wa.me/${(site.whatsapp || '').replace(/[^\d]/g, '')}`} target="_blank" rel="noreferrer" className="hover:text-white">{site.whatsapp}</a>
+              </div>
+            )}
+            {site.contact_email && (
+              <div className="flex items-center gap-2 text-white/70">
+                <ArrowUpRight size={15} className="text-brand" />
+                <a href={`mailto:${site.contact_email}`} className="hover:text-white">{site.contact_email}</a>
+              </div>
+            )}
+          </div>
           {visible.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-2" data-testid="footer-socials">
               {visible.map((s) => (

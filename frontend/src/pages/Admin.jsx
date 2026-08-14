@@ -243,10 +243,13 @@ function PlansView({ plans, onReload }) {
 function PlanEditor({ p, onSave, onDelete, saving }) {
   const [d, setD] = useState(p);
   useEffect(() => setD(p), [p]);
-  const upd = (patch) => setD({ ...d, ...patch });
+  const upd = (patch) => setD((prev) => ({ ...prev, ...patch }));
   const updSvc = (si, patch) => upd({ services: d.services.map((s, k) => (k === si ? { ...s, ...patch } : s)) });
   const addSvc = () => upd({ services: [...(d.services || []), { id: `svc_${Date.now()}`, name: "Nouvelle prestation", price: 0 }] });
   const rmSvc = (si) => upd({ services: d.services.filter((_, k) => k !== si) });
+  const updVar = (vi, patch) => upd({ variants: d.variants.map((v, k) => (k === vi ? { ...v, ...patch } : v)) });
+  const addVar = () => upd({ variants: [...(d.variants || []), { id: `var_${Date.now()}`, name: "Nouvelle option", price: 0 }] });
+  const rmVar = (vi) => upd({ variants: d.variants.filter((_, k) => k !== vi) });
   return (
     <div data-testid={`plan-edit-${p.id}`} className="rounded-xl border border-white/10 bg-brand-ink p-5">
       <div className="grid md:grid-cols-4 gap-3">
@@ -273,6 +276,23 @@ function PlanEditor({ p, onSave, onDelete, saving }) {
       ) : (
         <div className="mt-4"><Label className="text-white/50 text-xs">Détails (une ligne par item)</Label>
           <textarea value={(d.features || []).join("\n")} onChange={(e) => upd({ features: e.target.value.split("\n") })} rows={4} className="mt-1 w-full rounded-md bg-brand-surface border border-white/10 p-2 text-white text-sm focus:outline-none focus:border-brand" />
+        </div>
+      )}
+      {d.type === "fixed" && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-white/50 text-xs">Options / Variantes (ex : Stage-Alternance, CDI). Si présentes, elles remplacent le prix fixe.</Label>
+          </div>
+          <div className="mt-2 space-y-2">
+            {(d.variants || []).map((v, vi) => (
+              <div key={vi} className="flex gap-2 items-center">
+                <Input value={v.name} onChange={(e) => updVar(vi, { name: e.target.value })} placeholder="Nom de l'option" className="flex-1 bg-brand-surface border-white/10 h-9 text-white text-sm" />
+                <Input type="number" value={v.price} onChange={(e) => updVar(vi, { price: Number(e.target.value) || 0 })} placeholder="Prix" className="w-24 bg-brand-surface border-white/10 h-9 text-white text-sm" />
+                <button onClick={() => rmVar(vi)} className="text-white/40 hover:text-red-400 text-xs">Suppr.</button>
+              </div>
+            ))}
+            <button onClick={addVar} data-testid={`add-variant-${p.id}`} className="text-brand text-xs hover:underline">+ Ajouter une option</button>
+          </div>
         </div>
       )}
       <div className="mt-4 flex items-center gap-4 flex-wrap">
@@ -307,10 +327,13 @@ function LinksView({ plans }) {
   const combos = useMemo(() => {
     const map = {};
     plans.filter((p) => p.active).forEach((p) => {
-      if (p.id === "pack_emploi") {
+      if (p.variants && p.variants.length > 0) {
         const groups = [];
-        [{ id: "stage_alt", label: "Stage / Alternance (150€)" }, { id: "cdi", label: "CDI (499€)" }].forEach((jt) => {
-          [1, 2, 3, 4].forEach((n) => groups.push({ key: `pack_emploi_${jt.id}_${n}`, label: `${jt.label} · ${n} fois` }));
+        p.variants.forEach((v) => {
+          [1, 2, 3, 4].forEach((n) => groups.push({
+            key: `${p.id}_${v.id}_${n}`,
+            label: `${v.name} (${v.price}€) · ${n} fois`,
+          }));
         });
         map[p.name] = groups;
       } else if (p.type === "fixed") {
