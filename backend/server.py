@@ -14,9 +14,13 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # --- Config (all from environment) ---
 mongo_url = os.environ['MONGO_URL']
@@ -46,6 +50,25 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# Rate limiter (per client IP). Uses X-Forwarded-For when behind a proxy.
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=_client_ip)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Trop de tentatives, réessaie dans quelques minutes."},
+        headers={"Retry-After": "60"},
+    )
 
 # Default payment link config (admin can override). Keys: {plan}_{installments}
 DEFAULT_PAYMENT_LINKS: Dict[str, str] = {
@@ -358,7 +381,8 @@ async def public_site():
 
 
 @api_router.post("/inscriptions", response_model=Registration)
-async def create_inscription(payload: RegistrationCreate):
+@limiter.limit("10/minute")
+async def create_inscription(request: Request, payload: RegistrationCreate):
     if payload.installments not in (1, 2, 3, 4):
         raise HTTPException(status_code=400, detail="Nombre de paiements invalide")
     reg = Registration(**payload.model_dump())
@@ -371,7 +395,8 @@ async def create_inscription(payload: RegistrationCreate):
 
 # --- Auth ---
 @api_router.post("/auth/login")
-async def login(payload: LoginRequest):
+@limiter.limit("5/minute")
+async def login(request: Request, payload: LoginRequest):
     email = payload.email.lower()
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(payload.password, user["password_hash"]):
