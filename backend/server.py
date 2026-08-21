@@ -18,7 +18,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
-# --- Config ---
+# --- Config (all from environment) ---
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
@@ -28,9 +28,18 @@ JWT_ALGORITHM = "HS256"
 ADMIN_EMAIL = os.environ['ADMIN_EMAIL']
 ADMIN_PASSWORD = os.environ['ADMIN_PASSWORD']
 
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
-EMAIL_KEY = os.environ['EMERGENT_EMAIL_KEY']
-EMAIL_FROM_NAME = os.environ['EMAIL_FROM_NAME']
+# Brevo (Sendinblue) transactional email
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+BREVO_API_URL = os.environ.get('BREVO_API_URL', 'https://api.brevo.com/v3/smtp/email')
+EMAIL_FROM_NAME = os.environ.get('EMAIL_FROM_NAME', 'SK Mentoring')
+EMAIL_FROM_ADDRESS = os.environ.get('EMAIL_FROM_ADDRESS', 'no-reply@example.com')
+EMAIL_TEAM_NOTIFICATION = os.environ.get('EMAIL_TEAM_NOTIFICATION', '')
+
+# Cloudflare R2 (S3-compatible) — used by helpers in storage.py if uploads are added
+R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID', '')
+R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
+R2_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', '')
+R2_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL', '')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -208,28 +217,44 @@ async def get_plan_name(plan_id: str) -> str:
     return p["name"] if p else PLAN_LABELS.get(plan_id, plan_id)
 
 
-async def send_confirmation_email(reg: Registration, payment_link: str):
-    plan_name = await get_plan_name(reg.plan)
-    site = await db.settings.find_one({"_id": "site"}) or {}
-    brand = site.get("site_name", "SK Mentoring")
-    details_line = f"Paiement choisi : <b style=\"color:#fff;\">{reg.installments} fois</b>."
-    if reg.services:
-        svc_names = ", ".join(reg.services)
-        details_line += f"<br/>Prestations sélectionnées : <b style=\"color:#fff;\">{svc_names}</b>."
-    if reg.total_price:
-        details_line += f"<br/>Total : <b style=\"color:#FF5E00;\">{reg.total_price:.0f} €</b>."
+async def send_email_brevo(to_email: str, subject: str, html: str, to_name: str = "") -> bool:
+    """Send a transactional email via Brevo API. Returns True on success."""
+    if not BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY not configured — skipping email send")
+        return False
+    payload = {
+        "sender": {"name": EMAIL_FROM_NAME, "email": EMAIL_FROM_ADDRESS},
+        "to": [{"email": to_email, "name": to_name or to_email}],
+        "subject": subject,
+        "htmlContent": html,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            resp = await c.post(
+                BREVO_API_URL,
+                headers={"api-key": BREVO_API_KEY, "content-type": "application/json", "accept": "application/json"},
+                json=payload,
+            )
+        resp.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Brevo email send error: {e}")
+        return False
+
+
+def _client_email_html(brand: str, reg_name: str, plan_name: str, details_line: str, payment_link: str) -> str:
     pay_block = ""
     if payment_link:
         pay_block = f"""
         <tr><td style="padding:24px 0;">
           <a href="{payment_link}" style="background:#FF5E00;color:#0A0A0A;text-decoration:none;font-weight:700;padding:16px 32px;border-radius:999px;display:inline-block;">Finaliser mon paiement</a>
         </td></tr>"""
-    html = f"""
+    return f"""
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0A;padding:40px 0;font-family:Arial,sans-serif;">
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#141414;border:1px solid #27272A;border-radius:16px;padding:40px;">
           <tr><td style="color:#FF5E00;font-size:13px;letter-spacing:2px;text-transform:uppercase;">{brand}</td></tr>
-          <tr><td style="color:#ffffff;font-size:26px;font-weight:700;padding-top:12px;">Bienvenue {reg.name} 👋</td></tr>
+          <tr><td style="color:#ffffff;font-size:26px;font-weight:700;padding-top:12px;">Bienvenue {reg_name} 👋</td></tr>
           <tr><td style="color:#A1A1AA;font-size:15px;line-height:1.7;padding-top:16px;">
             Ton inscription au parcours <b style="color:#fff;">{plan_name}</b> a bien été enregistrée.<br/>
             {details_line}<br/><br/>
@@ -242,19 +267,60 @@ async def send_confirmation_email(reg: Registration, payment_link: str):
         </table>
       </td></tr>
     </table>"""
-    payload = {
-        "to": [reg.email],
-        "subject": "Ton inscription Mentoring est confirmée 🎯",
-        "html": html,
-        "from_name": EMAIL_FROM_NAME,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=30) as c:
-            resp = await c.post(f"{EMAIL_BASE_URL}/api/v1/email/send",
-                                headers={"X-Email-Key": EMAIL_KEY}, json=payload)
-        resp.raise_for_status()
-    except Exception as e:
-        logger.error(f"Email send error: {e}")
+
+
+def _team_email_html(brand: str, reg: "Registration", plan_name: str) -> str:
+    rows = [
+        ("Nom", reg.name), ("Email", reg.email), ("Téléphone", reg.phone),
+        ("Pays", reg.country), ("Niveau", reg.level or "—"),
+        ("Parcours", plan_name), ("Option", reg.job_type or "—"),
+        ("Prestations", ", ".join(reg.services) if reg.services else "—"),
+        ("Paiement", f"{reg.installments} fois"),
+        ("Total", f"{reg.total_price:.0f} €" if reg.total_price else "—"),
+        ("Commentaire", reg.message or "—"),
+    ]
+    rows_html = "".join(
+        f'<tr><td style="padding:6px 12px;color:#6b7280;width:140px;">{k}</td>'
+        f'<td style="padding:6px 12px;color:#111;font-weight:600;">{v}</td></tr>'
+        for k, v in rows
+    )
+    return f"""
+    <div style="font-family:Arial,sans-serif;background:#f7f7f8;padding:32px;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#0A0A0A;color:#FF5E00;padding:18px 24px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:12px;">{brand} · Nouvelle inscription</div>
+        <div style="padding:20px 12px;">
+          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px;">{rows_html}</table>
+        </div>
+        <div style="padding:12px 24px;background:#f9fafb;color:#6b7280;font-size:12px;">Reçu le {reg.created_at}</div>
+      </div>
+    </div>"""
+
+
+async def send_confirmation_email(reg: "Registration", payment_link: str):
+    plan_name = await get_plan_name(reg.plan)
+    site = await db.settings.find_one({"_id": "site"}) or {}
+    brand = site.get("site_name") or EMAIL_FROM_NAME
+    details_line = f"Paiement choisi : <b style=\"color:#fff;\">{reg.installments} fois</b>."
+    if reg.services:
+        details_line += f"<br/>Prestations sélectionnées : <b style=\"color:#fff;\">{', '.join(reg.services)}</b>."
+    if reg.total_price:
+        details_line += f"<br/>Total : <b style=\"color:#FF5E00;\">{reg.total_price:.0f} €</b>."
+
+    # 1. Confirmation email to the student
+    await send_email_brevo(
+        to_email=reg.email,
+        to_name=reg.name,
+        subject=f"Ton inscription {brand} est confirmée 🎯",
+        html=_client_email_html(brand, reg.name, plan_name, details_line, payment_link),
+    )
+
+    # 2. Notification email to the team (if configured)
+    if EMAIL_TEAM_NOTIFICATION:
+        await send_email_brevo(
+            to_email=EMAIL_TEAM_NOTIFICATION,
+            subject=f"[{brand}] Nouvelle inscription — {reg.name}",
+            html=_team_email_html(brand, reg, plan_name),
+        )
 
 
 # --- Public routes ---
@@ -449,3 +515,10 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     client.close()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", "8001"))
+    host = os.environ.get("HOST", "0.0.0.0")
+    uvicorn.run("server:app", host=host, port=port, reload=False)
