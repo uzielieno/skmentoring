@@ -20,9 +20,13 @@ coverage/
 .eslintcache
 
 # ── Env & secrets ────────────────────────────────────────────────
+# On IGNORE uniquement les vrais fichiers d'environnement.
+# `.env.example` (à la racine, dans backend/, frontend/, …) reste versionné.
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
+!**/.env.example
 *.pem
 *.key
 
@@ -39,3 +43,5 @@ logs/
 tmp/
 .emergent/
 test_reports/
+credentials.json
+.credentials
