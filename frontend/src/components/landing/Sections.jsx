@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import Marquee from "react-fast-marquee";
 import { motion } from "framer-motion";
-import { ArrowUpRight, FileText, Linkedin, MessageSquare, Target, Youtube, Play, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, Target, Play, CheckCircle2 } from "lucide-react";
 import Reveal from "./Reveal";
 import { STEPS, IMAGES } from "./data";
 

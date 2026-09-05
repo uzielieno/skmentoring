@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowUpRight, CheckCircle2, Check, Loader2, ShieldCheck, Lock, Zap, Sparkles, MessageCircle } from "lucide-react";
-import { api, formatApiErrorDetail } from "@/lib/api";
+import { api, formatApiErrorDetail, safeArray, safeObject } from "@/lib/api";
 import { COUNTRIES } from "@/components/landing/data";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,20 +16,29 @@ export default function Inscription() {
   const initialServices = (params.get("services") || "").split(",").filter(Boolean);
 
   const [plans, setPlans] = useState([]);
+  const [plansState, setPlansState] = useState("loading"); // loading | ok | error
   const [planId, setPlanId] = useState(initialPlan);
   const [services, setServices] = useState(Object.fromEntries(initialServices.map((s) => [s, true])));
   const [form, setForm] = useState({ name: "", email: "", phone: "", country: "", installments: "1", message: "", level: "", variant: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(null);
 
-  useEffect(() => { api.get("/plans").then(({ data }) => setPlans(data)).catch(() => {}); }, []);
+  useEffect(() => {
+    api.get("/plans")
+      .then(({ data }) => {
+        const arr = safeArray(data, "/plans");
+        setPlans(arr);
+        setPlansState(arr.length ? "ok" : "error");
+      })
+      .catch(() => setPlansState("error"));
+  }, []);
 
   const plan = useMemo(() => plans.find((p) => p.id === planId) || plans[0], [plans, planId]);
   const isCustom = plan?.type === "custom";
-  const hasVariants = !!(plan?.variants && plan.variants.length > 0);
+  const hasVariants = !!(plan && Array.isArray(plan.variants) && plan.variants.length > 0);
   const currentVariant = hasVariants ? (plan.variants.find((v) => v.id === form.variant) || plan.variants[0]) : null;
   const total = isCustom
-    ? (plan.services || []).reduce((s, x) => s + (services[x.id] ? x.price : 0), 0)
+    ? (Array.isArray(plan?.services) ? plan.services : []).reduce((s, x) => s + (services[x.id] ? x.price : 0), 0)
     : hasVariants
     ? (currentVariant?.price || 0)
     : plan?.price || 0;
@@ -49,7 +58,7 @@ export default function Inscription() {
     }
     setLoading(true);
     try {
-      const svcIds = isCustom ? (plan.services || []).filter((s) => services[s.id]).map((s) => s.name) : [];
+      const svcIds = isCustom ? (Array.isArray(plan.services) ? plan.services : []).filter((s) => services[s.id]).map((s) => s.name) : [];
       const payload = {
         name: form.name, email: form.email, phone: form.phone,
         track: plan.track || "job", plan: plan.id, country: form.country,
@@ -59,10 +68,11 @@ export default function Inscription() {
       };
       await api.post("/inscriptions", payload);
       const { data: links } = await api.get("/payment-links");
+      const linksObj = safeObject(links, "/payment-links");
       const linkKey = hasVariants
         ? `${plan.id}_${currentVariant.id}_${form.installments}`
         : `${plan.id}_${form.installments}`;
-      const link = links[linkKey] || "";
+      const link = linksObj[linkKey] || "";
       setDone({
         link,
         planName: plan.name,
@@ -218,15 +228,29 @@ export default function Inscription() {
             <h2 className="font-display font-extrabold text-3xl md:text-4xl tracking-tight">Finalise ton inscription</h2>
             <p className="mt-2 text-white/55">Quelques infos et c'est parti.</p>
 
+            {plansState === "loading" && (
+              <div className="mt-8 rounded-2xl border border-white/10 bg-brand-surface p-6 text-sm text-white/60 flex items-center gap-3" data-testid="plans-loading">
+                <Loader2 className="animate-spin text-brand" size={16} /> Chargement des offres…
+              </div>
+            )}
+            {plansState === "error" && (
+              <div className="mt-8 rounded-2xl border border-brand/30 bg-brand/10 p-6" data-testid="plans-error">
+                <div className="font-semibold text-brand mb-1">Offres momentanément indisponibles</div>
+                <p className="text-sm text-white/70">Nos parcours ne peuvent pas être chargés pour l'instant. Réessaie dans quelques instants ou reviens à l'accueil.</p>
+                <Link to="/" className="mt-3 inline-block text-sm text-brand hover:underline">Retour à l'accueil</Link>
+              </div>
+            )}
+
+            {plansState === "ok" && (<>
             {/* Plan chooser */}
             <div className="mt-8 grid grid-cols-3 gap-2">
-              {plans.map((p) => (
+              {(Array.isArray(plans) ? plans : []).map((p) => (
                 <button type="button" key={p.id} onClick={() => setPlanId(p.id)} data-testid={`choice-${p.id}`}
                   className={`rounded-2xl border p-4 text-left transition-colors duration-200 ${
                     planId === p.id ? "border-brand bg-brand/10" : "border-white/10 bg-brand-surface hover:border-white/30"
                   }`}>
                   <div className="text-xs font-semibold text-white">{p.name}</div>
-                  <div className="text-brand text-sm font-bold mt-1">{p.type === "custom" ? "à la carte" : (p.variants && p.variants.length > 0) ? `dès ${Math.min(...p.variants.map((v) => v.price))}€` : `${p.price}€`}</div>
+                  <div className="text-brand text-sm font-bold mt-1">{p.type === "custom" ? "à la carte" : (Array.isArray(p.variants) && p.variants.length > 0) ? `dès ${Math.min(...p.variants.map((v) => v.price))}€` : `${p.price}€`}</div>
                 </button>
               ))}
             </div>
@@ -238,7 +262,7 @@ export default function Inscription() {
                 <Select value={currentVariant?.id || ""} onValueChange={set("variant")}>
                   <SelectTrigger data-testid="select-variant" className="mt-2 bg-brand-surface border-white/10 h-12 text-white"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                   <SelectContent className="bg-brand-elevated border-white/10 text-white">
-                    {plan.variants.map((v) => (
+                    {(Array.isArray(plan.variants) ? plan.variants : []).map((v) => (
                       <SelectItem key={v.id} value={v.id}>{v.name} — {v.price}€</SelectItem>
                     ))}
                   </SelectContent>
@@ -248,7 +272,7 @@ export default function Inscription() {
             {isCustom && (
               <div className="mt-6 space-y-2" data-testid="services-picker">
                 <Label className="text-white/70">Prestations souhaitées</Label>
-                {(plan.services || []).map((s) => (
+                {(Array.isArray(plan.services) ? plan.services : []).map((s) => (
                   <label key={s.id} data-testid={`svc-${s.id}`}
                     className={`flex items-center justify-between rounded-xl border px-4 py-3 cursor-pointer ${
                       services[s.id] ? "border-brand bg-brand/10" : "border-white/10 bg-brand-surface"
@@ -323,6 +347,7 @@ export default function Inscription() {
               {loading ? <><Loader2 className="animate-spin" size={18} /> Envoi…</> : <>Valider mon inscription {total > 0 ? `· ${total}€` : ""} <ArrowUpRight size={18} /></>}
             </button>
             <p className="mt-4 text-center text-xs text-white/40">En validant, tu recevras un email de confirmation et le lien de paiement adapté.</p>
+            </>)}
           </form>
       </div>
     </div>

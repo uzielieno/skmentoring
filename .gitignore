@@ -45,3 +45,5 @@ tmp/
 test_reports/
 credentials.json
 .credentials
+.env.*
+*.env

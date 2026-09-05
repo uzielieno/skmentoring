@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Link2, Settings, LogOut, Loader2, Save, Search, Filter,
   RefreshCw, Plus, Trash2, GraduationCap, Briefcase, BadgeCheck,
 } from "lucide-react";
-import { api, formatApiErrorDetail } from "@/lib/api";
+import { api, formatApiErrorDetail, safeArray, safeObject } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -85,7 +85,7 @@ function InscriptionsView({ rows, plans, onChangeStatus, loading, onReload }) {
   const [f, setF] = useState({ plan: "all", status: "all", country: "all" });
   const planLabel = (id) => plans.find((p) => p.id === id)?.name || id;
 
-  const filtered = rows.filter((r) => {
+  const filtered = (Array.isArray(rows) ? rows : []).filter((r) => {
     const s = [r.name, r.email, r.phone, r.country, r.message, r.level].join(" ").toLowerCase();
     if (q && !s.includes(q.toLowerCase())) return false;
     if (f.plan !== "all" && r.plan !== f.plan) return false;
@@ -117,7 +117,7 @@ function InscriptionsView({ rows, plans, onChangeStatus, loading, onReload }) {
                   <SelectTrigger data-testid="filter-plan" className="mt-1 bg-brand-ink border-white/10 h-9 text-white text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-brand-elevated border-white/10 text-white">
                     <SelectItem value="all">Tous</SelectItem>
-                    {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                {(Array.isArray(plans) ? plans : []).map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -234,7 +234,7 @@ function PlansView({ plans, onReload }) {
         </div>
       </div>
       <div className="space-y-4">
-        {plans.map((p, i) => <PlanEditor key={p.id} p={p} onSave={update} onDelete={del} saving={savingId === p.id} />)}
+        {(Array.isArray(plans) ? plans : []).map((p) => <PlanEditor key={p.id} p={p} onSave={update} onDelete={del} saving={savingId === p.id} />)}
       </div>
     </div>
   );
@@ -244,12 +244,12 @@ function PlanEditor({ p, onSave, onDelete, saving }) {
   const [d, setD] = useState(p);
   useEffect(() => setD(p), [p]);
   const upd = (patch) => setD((prev) => ({ ...prev, ...patch }));
-  const updSvc = (si, patch) => upd({ services: d.services.map((s, k) => (k === si ? { ...s, ...patch } : s)) });
-  const addSvc = () => upd({ services: [...(d.services || []), { id: `svc_${Date.now()}`, name: "Nouvelle prestation", price: 0 }] });
-  const rmSvc = (si) => upd({ services: d.services.filter((_, k) => k !== si) });
-  const updVar = (vi, patch) => upd({ variants: d.variants.map((v, k) => (k === vi ? { ...v, ...patch } : v)) });
-  const addVar = () => upd({ variants: [...(d.variants || []), { id: `var_${Date.now()}`, name: "Nouvelle option", price: 0 }] });
-  const rmVar = (vi) => upd({ variants: d.variants.filter((_, k) => k !== vi) });
+  const updSvc = (si, patch) => upd({ services: (Array.isArray(d.services) ? d.services : []).map((s, k) => (k === si ? { ...s, ...patch } : s)) });
+  const addSvc = () => upd({ services: [...(Array.isArray(d.services) ? d.services : []), { id: `svc_${Date.now()}`, name: "Nouvelle prestation", price: 0 }] });
+  const rmSvc = (si) => upd({ services: (Array.isArray(d.services) ? d.services : []).filter((_, k) => k !== si) });
+  const updVar = (vi, patch) => upd({ variants: (Array.isArray(d.variants) ? d.variants : []).map((v, k) => (k === vi ? { ...v, ...patch } : v)) });
+  const addVar = () => upd({ variants: [...(Array.isArray(d.variants) ? d.variants : []), { id: `var_${Date.now()}`, name: "Nouvelle option", price: 0 }] });
+  const rmVar = (vi) => upd({ variants: (Array.isArray(d.variants) ? d.variants : []).filter((_, k) => k !== vi) });
   return (
     <div data-testid={`plan-edit-${p.id}`} className="rounded-xl border border-white/10 bg-brand-ink p-5">
       <div className="grid md:grid-cols-4 gap-3">
@@ -263,7 +263,7 @@ function PlanEditor({ p, onSave, onDelete, saving }) {
         <div className="mt-4">
           <Label className="text-white/50 text-xs">Prestations à la carte</Label>
           <div className="mt-2 space-y-2">
-            {(d.services || []).map((s, si) => (
+            {(Array.isArray(d.services) ? d.services : []).map((s, si) => (
               <div key={si} className="flex gap-2 items-center">
                 <Input value={s.name} onChange={(e) => updSvc(si, { name: e.target.value })} placeholder="Nom" className="flex-1 bg-brand-surface border-white/10 h-9 text-white text-sm" />
                 <Input type="number" value={s.price} onChange={(e) => updSvc(si, { price: Number(e.target.value) || 0 })} placeholder="Prix" className="w-24 bg-brand-surface border-white/10 h-9 text-white text-sm" />
@@ -275,7 +275,7 @@ function PlanEditor({ p, onSave, onDelete, saving }) {
         </div>
       ) : (
         <div className="mt-4"><Label className="text-white/50 text-xs">Détails (une ligne par item)</Label>
-          <textarea value={(d.features || []).join("\n")} onChange={(e) => upd({ features: e.target.value.split("\n") })} rows={4} className="mt-1 w-full rounded-md bg-brand-surface border border-white/10 p-2 text-white text-sm focus:outline-none focus:border-brand" />
+          <textarea value={(Array.isArray(d.features) ? d.features : []).join("\n")} onChange={(e) => upd({ features: e.target.value.split("\n") })} rows={4} className="mt-1 w-full rounded-md bg-brand-surface border border-white/10 p-2 text-white text-sm focus:outline-none focus:border-brand" />
         </div>
       )}
       {d.type === "fixed" && (
@@ -284,7 +284,7 @@ function PlanEditor({ p, onSave, onDelete, saving }) {
             <Label className="text-white/50 text-xs">Options / Variantes (ex : Stage-Alternance, CDI). Si présentes, elles remplacent le prix fixe.</Label>
           </div>
           <div className="mt-2 space-y-2">
-            {(d.variants || []).map((v, vi) => (
+            {(Array.isArray(d.variants) ? d.variants : []).map((v, vi) => (
               <div key={vi} className="flex gap-2 items-center">
                 <Input value={v.name} onChange={(e) => updVar(vi, { name: e.target.value })} placeholder="Nom de l'option" className="flex-1 bg-brand-surface border-white/10 h-9 text-white text-sm" />
                 <Input type="number" value={v.price} onChange={(e) => updVar(vi, { price: Number(e.target.value) || 0 })} placeholder="Prix" className="w-24 bg-brand-surface border-white/10 h-9 text-white text-sm" />
@@ -322,12 +322,12 @@ function subsets(arr) {
 function LinksView({ plans }) {
   const [links, setLinks] = useState({});
   const [saving, setSaving] = useState(false);
-  useEffect(() => { api.get("/admin/payment-links").then(({ data }) => setLinks(data)).catch(() => {}); }, []);
+  useEffect(() => { api.get("/admin/payment-links").then(({ data }) => setLinks(safeObject(data, "/admin/payment-links"))).catch(() => {}); }, []);
 
   const combos = useMemo(() => {
     const map = {};
-    plans.filter((p) => p.active).forEach((p) => {
-      if (p.variants && p.variants.length > 0) {
+    (Array.isArray(plans) ? plans : []).filter((p) => p.active).forEach((p) => {
+      if (Array.isArray(p.variants) && p.variants.length > 0) {
         const groups = [];
         p.variants.forEach((v) => {
           [1, 2, 3, 4].forEach((n) => groups.push({
@@ -339,8 +339,8 @@ function LinksView({ plans }) {
       } else if (p.type === "fixed") {
         map[p.name] = [1, 2, 3, 4].map((n) => ({ key: `${p.id}_${n}`, label: `${n} fois` }));
       } else if (p.type === "custom") {
-        const ids = (p.services || []).map((s) => s.id).sort();
-        const nameMap = Object.fromEntries((p.services || []).map((s) => [s.id, s.name]));
+        const ids = (Array.isArray(p.services) ? p.services : []).map((s) => s.id).sort();
+        const nameMap = Object.fromEntries((Array.isArray(p.services) ? p.services : []).map((s) => [s.id, s.name]));
         const groups = [];
         subsets(ids).forEach((sub) => {
           [1, 2, 3, 4].forEach((n) => {
@@ -392,7 +392,7 @@ function LinksView({ plans }) {
 function SettingsView() {
   const [s, setS] = useState({});
   const [saving, setSaving] = useState(false);
-  useEffect(() => { api.get("/admin/site").then(({ data }) => setS(data)).catch(() => {}); }, []);
+  useEffect(() => { api.get("/admin/site").then(({ data }) => setS(safeObject(data, "/admin/site"))).catch(() => {}); }, []);
   const save = async () => {
     setSaving(true);
     try {
@@ -453,7 +453,9 @@ function Shell({ onLogout }) {
     setLoading(true);
     try {
       const [r, s, p] = await Promise.all([api.get("/admin/inscriptions"), api.get("/admin/stats"), api.get("/admin/plans")]);
-      setRows(r.data); setStats(s.data); setPlans(p.data);
+      setRows(safeArray(r.data, "/admin/inscriptions"));
+      setStats(safeObject(s.data, "/admin/stats"));
+      setPlans(safeArray(p.data, "/admin/plans"));
     } catch (err) { if (err.response?.status === 401) onLogout(); }
     finally { setLoading(false); }
   }, [onLogout]);
@@ -462,9 +464,9 @@ function Shell({ onLogout }) {
   const changeStatus = async (id, status) => {
     try {
       await api.patch(`/admin/inscriptions/${id}`, { status });
-      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)));
+      setRows((rs) => (Array.isArray(rs) ? rs : []).map((r) => (r.id === id ? { ...r, status } : r)));
       toast.success("Statut mis à jour.");
-      const s = await api.get("/admin/stats"); setStats(s.data);
+      const s = await api.get("/admin/stats"); setStats(safeObject(s.data, "/admin/stats"));
     } catch { toast.error("Échec."); }
   };
 

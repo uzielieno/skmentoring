@@ -7,19 +7,20 @@ import {
 } from "../ui/accordion";
 import Reveal from "./Reveal";
 import { TESTIMONIALS, FAQ, IMAGES } from "./data";
-import { api } from "@/lib/api";
+import { api, safeArray, safeObject } from "@/lib/api";
 
 function CustomCard({ plan }) {
   const [selected, setSelected] = useState({});
-  const total = (plan.services || []).reduce((s, x) => s + (selected[x.id] ? x.price : 0), 0);
-  const chosen = (plan.services || []).filter((x) => selected[x.id]).map((x) => x.id).join(",");
+  const services = Array.isArray(plan.services) ? plan.services : [];
+  const total = services.reduce((s, x) => s + (selected[x.id] ? x.price : 0), 0);
+  const chosen = services.filter((x) => selected[x.id]).map((x) => x.id).join(",");
   const query = chosen ? `?plan=custom&services=${chosen}` : `?plan=custom`;
   return (
     <div className="relative h-full flex flex-col rounded-3xl border border-white/10 bg-brand-ink p-10 md:p-12" data-testid="plan-custom">
       <h3 className="font-display font-bold text-2xl text-white">{plan.name}</h3>
       <p className="mt-2 text-white/55 text-sm">{plan.tagline}</p>
       <div className="mt-6 space-y-3 flex-1">
-        {(plan.services || []).map((s) => (
+        {services.map((s) => (
           <label key={s.id} data-testid={`service-${s.id}`}
             className={`flex items-center justify-between rounded-2xl border px-4 py-3 cursor-pointer transition-colors ${
               selected[s.id] ? "border-brand bg-brand/10" : "border-white/10 bg-brand-surface hover:border-white/25"
@@ -65,7 +66,7 @@ function FixedCard({ plan }) {
       <h3 className="font-display font-bold text-2xl text-white">{plan.name}</h3>
       <p className="mt-2 text-white/55 text-sm">{plan.tagline}</p>
       <div className="mt-8 flex items-end gap-1">
-        {plan.variants && plan.variants.length > 0 ? (
+        {Array.isArray(plan.variants) && plan.variants.length > 0 ? (
           <>
             <span className="text-white/60 text-sm mb-3 mr-2">à partir de</span>
             <span className="font-serif text-6xl text-white">{Math.min(...plan.variants.map((v) => v.price))}€</span>
@@ -79,7 +80,7 @@ function FixedCard({ plan }) {
         )}
       </div>
       <ul className="mt-8 space-y-3 flex-1">
-        {(plan.features || []).map((f) => (
+        {(Array.isArray(plan.features) ? plan.features : []).map((f) => (
           <li key={f} className="flex items-start gap-3 text-white/80 text-sm">
             <span className="grid place-items-center w-5 h-5 rounded-full bg-brand/15 text-brand shrink-0 mt-0.5"><Check size={12} /></span>{f}
           </li>
@@ -99,7 +100,14 @@ function FixedCard({ plan }) {
 
 export function Pricing() {
   const [plans, setPlans] = useState([]);
-  useEffect(() => { api.get("/plans").then(({ data }) => setPlans(data)).catch(() => {}); }, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    api.get("/plans")
+      .then(({ data }) => { setPlans(safeArray(data, "/plans")); setError(false); })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <section id="tarifs" className="border-t border-white/10 bg-brand-surface py-28" data-testid="pricing">
       <div className="max-w-[1400px] mx-auto px-6 md:px-10">
@@ -108,13 +116,21 @@ export function Pricing() {
           <h2 className="mt-4 font-display font-extrabold text-4xl md:text-6xl text-white tracking-tight">Un investissement, pas une dépense.</h2>
           <p className="mt-4 text-white/60 max-w-xl mx-auto">Paiement possible en 1, 2, 3 ou 4 fois. Choisis ton parcours ou construis-le à la carte.</p>
         </Reveal>
-        <div className="mt-16 grid lg:grid-cols-3 gap-6">
-          {plans.map((p, i) => (
-            <Reveal key={p.id} delay={i * 0.08}>
-              {p.type === "custom" ? <CustomCard plan={p} /> : <FixedCard plan={p} />}
-            </Reveal>
-          ))}
-        </div>
+        {loading ? (
+          <div className="mt-16 text-center text-white/50" data-testid="pricing-loading">Chargement des offres…</div>
+        ) : error || plans.length === 0 ? (
+          <div className="mt-16 text-center text-white/60" data-testid="pricing-error">
+            Les offres sont temporairement indisponibles. Réessaie dans quelques instants.
+          </div>
+        ) : (
+          <div className="mt-16 grid lg:grid-cols-3 gap-6">
+            {plans.map((p, i) => (
+              <Reveal key={p.id} delay={i * 0.08}>
+                {p.type === "custom" ? <CustomCard plan={p} /> : <FixedCard plan={p} />}
+              </Reveal>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -193,7 +209,7 @@ export function FinalCta() {
 
 export function Footer() {
   const [site, setSite] = useState({});
-  useEffect(() => { api.get("/site").then(({ data }) => setSite(data)).catch(() => {}); }, []);
+  useEffect(() => { api.get("/site").then(({ data }) => setSite(safeObject(data, "/site"))).catch(() => {}); }, []);
   const socials = [
     { k: "linkedin", I: Linkedin, l: "LinkedIn" },
     { k: "whatsapp_url", I: MessageCircle, l: "WhatsApp" },

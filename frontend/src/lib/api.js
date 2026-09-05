@@ -19,3 +19,24 @@ export function formatApiErrorDetail(detail) {
   if (detail && typeof detail.msg === "string") return detail.msg;
   return String(detail);
 }
+
+/**
+ * Retourne toujours un tableau, même si l'API renvoie n'importe quoi (HTML, null,
+ * objet…). Log un warning en dev si le payload est inattendu.
+ */
+export function safeArray(data, context = "response") {
+  if (Array.isArray(data)) return data;
+  // eslint-disable-next-line no-console
+  console.warn(`[api] Expected array from ${context}, got:`, typeof data);
+  return [];
+}
+
+/**
+ * Retourne toujours un objet plain, même si l'API renvoie n'importe quoi.
+ */
+export function safeObject(data, context = "response") {
+  if (data && typeof data === "object" && !Array.isArray(data)) return data;
+  // eslint-disable-next-line no-console
+  console.warn(`[api] Expected object from ${context}, got:`, typeof data);
+  return {};
+}
