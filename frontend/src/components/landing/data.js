@@ -1,8 +1,8 @@
 export const IMAGES = {
-  hero: "https://images.unsplash.com/photo-1589386417686-0d34b5903d23?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwzfHxjb25maWRlbnQlMjBibGFjayUyMHlvdW5nJTIwcHJvZmVzc2lvbmFsfGVufDB8fHx8MTc4NTg3NzgyMXww&ixlib=rb-4.1.0&q=85",
-  testimonial: "https://images.unsplash.com/photo-1573496799515-eebbb63814f2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwyfHxjb25maWRlbnQlMjBibGFjayUyMHlvdW5nJTIwcHJvZmVzc2lvbmFsfGVufDB8fHx8MTc4NTg3NzgyMXww&ixlib=rb-4.1.0&q=85",
-  tage: "https://images.unsplash.com/photo-1514369118554-e20d93546b30?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwyfHxtaXhlZCUyMHJhY2UlMjBzdHVkZW50JTIwc3R1ZHlpbmd8ZW58MHx8fHwxNzg1ODc3ODIxfDA&ixlib=rb-4.1.0&q=85",
-  emploi: "https://images.unsplash.com/photo-1573164574511-73c773193279?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxibGFjayUyMHByb2Zlc3Npb25hbHMlMjBtZWV0aW5nfGVufDB8fHx8MTc4NTg3NzgyMXww&ixlib=rb-4.1.0&q=85",
+  hero: "https://customer-assets-0z36b82j.emergentagent.net/job_pathway-success-3/artifacts/6zzvf2cu_ChatGPT%20Image%2019%20sept.%202026%2C%2018_41_54.png",
+  emploi: "https://customer-assets-0z36b82j.emergentagent.net/job_pathway-success-3/artifacts/me7wo6p3_ChatGPT%20Image%2019%20sept.%202026%2C%2018_42_11.png",
+  tage: "https://customer-assets-0z36b82j.emergentagent.net/job_pathway-success-3/artifacts/0d7f9y58_ChatGPT%20Image%2019%20sept.%202026%2C%2018_45_24.png",
+  testimonial: "https://customer-assets-0z36b82j.emergentagent.net/job_pathway-success-3/artifacts/mnsxtd1e_ChatGPT%20Image%2019%20sept.%202026%2C%2019_02_49.png",
 };
 
 export const STEPS = [
